@@ -2,6 +2,7 @@
 
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from gitstats import __version__
 
@@ -54,6 +55,34 @@ def stats(
     console.print(f"[bold]Contributors:[/] [green]{stats['total_authors']}[/]")
     console.print(f"[bold]First commit:[/] [yellow]{stats['first_commit']}[/]")
     console.print(f"[bold]Latest commit:[/] [yellow]{stats['last_commit']}[/]")
+    console.print()
+    
+    # Show author breakdown table
+    if stats.get("author_stats"):
+        _print_author_table(stats["author_stats"])
+
+
+def _print_author_table(author_stats: list[dict]) -> None:
+    """Print a table of author statistics."""
+    table = Table(title="👥 Commits by Author", show_header=True, header_style="bold cyan")
+    
+    table.add_column("Author", style="white", no_wrap=True)
+    table.add_column("Commits", justify="right", style="green")
+    table.add_column("Percentage", justify="right", style="yellow")
+    table.add_column("", justify="left", style="blue")  # Progress bar
+    
+    for stat in author_stats:
+        bar_width = int(stat["percentage"] / 2)  # Max 50 chars for 100%
+        bar = "█" * bar_width
+        
+        table.add_row(
+            stat["author"],
+            str(stat["commits"]),
+            f"{stat['percentage']:.1f}%",
+            bar,
+        )
+    
+    console.print(table)
     console.print()
 
 

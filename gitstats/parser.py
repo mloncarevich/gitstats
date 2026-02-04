@@ -60,6 +60,9 @@ def get_commit_stats(repo_path: str = ".") -> dict | None:
     # Sort by date
     commits.sort(key=lambda x: x["date"])
     
+    # Calculate author statistics
+    author_stats = get_author_stats(commits)
+    
     return {
         "total_commits": len(commits),
         "total_authors": len(authors),
@@ -67,4 +70,32 @@ def get_commit_stats(repo_path: str = ".") -> dict | None:
         "last_commit": commits[-1]["date"].strftime("%Y-%m-%d"),
         "commits": commits,
         "authors": list(authors),
+        "author_stats": author_stats,
     }
+
+
+def get_author_stats(commits: list[dict]) -> list[dict]:
+    """
+    Calculate commit statistics per author.
+    
+    Args:
+        commits: List of commit dictionaries
+        
+    Returns:
+        List of author statistics sorted by commit count (descending)
+    """
+    from collections import Counter
+    
+    author_counts = Counter(commit["author"] for commit in commits)
+    total = len(commits)
+    
+    stats = []
+    for author, count in author_counts.most_common():
+        percentage = (count / total) * 100
+        stats.append({
+            "author": author,
+            "commits": count,
+            "percentage": percentage,
+        })
+    
+    return stats
