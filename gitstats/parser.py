@@ -99,3 +99,88 @@ def get_author_stats(commits: list[dict]) -> list[dict]:
         })
     
     return stats
+
+
+def get_activity_heatmap(commits: list[dict]) -> dict:
+    """
+    Calculate commit activity by day of week and hour.
+    
+    Args:
+        commits: List of commit dictionaries
+        
+    Returns:
+        Dictionary with heatmap data (day -> hour -> count)
+    """
+    from collections import defaultdict
+    
+    # Initialize heatmap: 7 days x 24 hours
+    heatmap = defaultdict(lambda: defaultdict(int))
+    
+    for commit in commits:
+        date = commit["date"]
+        day = date.weekday()  # 0=Monday, 6=Sunday
+        hour = date.hour
+        heatmap[day][hour] += 1
+    
+    # Find max for normalization
+    max_count = max(
+        count
+        for day_data in heatmap.values()
+        for count in day_data.values()
+    ) if heatmap else 1
+    
+    return {
+        "data": dict(heatmap),
+        "max_count": max_count,
+    }
+
+
+def get_weekly_activity(commits: list[dict]) -> list[dict]:
+    """
+    Calculate commit activity by day of week.
+    
+    Args:
+        commits: List of commit dictionaries
+        
+    Returns:
+        List of day statistics
+    """
+    from collections import Counter
+    
+    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    day_counts = Counter(commit["date"].weekday() for commit in commits)
+    total = len(commits)
+    
+    return [
+        {
+            "day": days[i],
+            "commits": day_counts.get(i, 0),
+            "percentage": (day_counts.get(i, 0) / total * 100) if total else 0,
+        }
+        for i in range(7)
+    ]
+
+
+def get_hourly_activity(commits: list[dict]) -> list[dict]:
+    """
+    Calculate commit activity by hour of day.
+    
+    Args:
+        commits: List of commit dictionaries
+        
+    Returns:
+        List of hourly statistics
+    """
+    from collections import Counter
+    
+    hour_counts = Counter(commit["date"].hour for commit in commits)
+    total = len(commits)
+    
+    return [
+        {
+            "hour": h,
+            "commits": hour_counts.get(h, 0),
+            "percentage": (hour_counts.get(h, 0) / total * 100) if total else 0,
+        }
+        for h in range(24)
+    ]

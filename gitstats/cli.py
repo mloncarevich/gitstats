@@ -60,6 +60,9 @@ def stats(
     # Show author breakdown table
     if stats.get("author_stats"):
         _print_author_table(stats["author_stats"])
+    
+    # Show activity heatmap
+    _print_activity_heatmap(stats["commits"])
 
 
 def _print_author_table(author_stats: list[dict]) -> None:
@@ -84,6 +87,40 @@ def _print_author_table(author_stats: list[dict]) -> None:
     
     console.print(table)
     console.print()
+
+
+def _print_activity_heatmap(commits: list[dict]) -> None:
+    """Print activity heatmap by day and hour."""
+    from gitstats.parser import get_weekly_activity, get_hourly_activity
+    
+    # Weekly activity
+    weekly = get_weekly_activity(commits)
+    
+    console.print("[bold]📅 Activity by Day of Week[/]\n")
+    
+    max_commits = max(d["commits"] for d in weekly) if weekly else 1
+    
+    for day_stat in weekly:
+        bar_width = int((day_stat["commits"] / max_commits) * 30) if max_commits else 0
+        bar = "█" * bar_width
+        
+        console.print(
+            f"  [cyan]{day_stat['day']}[/] │ [green]{bar:<30}[/] {day_stat['commits']:>3} commits"
+        )
+    
+    console.print()
+    
+    # Hourly activity (simplified - peak hours)
+    hourly = get_hourly_activity(commits)
+    peak_hours = sorted(hourly, key=lambda x: x["commits"], reverse=True)[:3]
+    
+    if peak_hours and peak_hours[0]["commits"] > 0:
+        console.print("[bold]⏰ Peak Coding Hours[/]\n")
+        for h in peak_hours:
+            if h["commits"] > 0:
+                hour_str = f"{h['hour']:02d}:00"
+                console.print(f"  [yellow]{hour_str}[/] - {h['commits']} commits ({h['percentage']:.1f}%)")
+        console.print()
 
 
 if __name__ == "__main__":
