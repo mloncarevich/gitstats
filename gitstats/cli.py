@@ -42,25 +42,25 @@ def stats(
 ) -> None:
     """Show commit statistics for a git repository."""
     from gitstats.parser import get_commit_stats
-    
+
     console.print(f"\n[bold]📊 Git Statistics for:[/] [cyan]{path}[/]\n")
-    
+
     stats = get_commit_stats(path)
-    
+
     if not stats:
         console.print("[red]No commits found or not a git repository.[/]")
         raise typer.Exit(1)
-    
+
     console.print(f"[bold]Total commits:[/] [green]{stats['total_commits']}[/]")
     console.print(f"[bold]Contributors:[/] [green]{stats['total_authors']}[/]")
     console.print(f"[bold]First commit:[/] [yellow]{stats['first_commit']}[/]")
     console.print(f"[bold]Latest commit:[/] [yellow]{stats['last_commit']}[/]")
     console.print()
-    
+
     # Show author breakdown table
     if stats.get("author_stats"):
         _print_author_table(stats["author_stats"])
-    
+
     # Show activity heatmap
     _print_activity_heatmap(stats["commits"])
 
@@ -68,58 +68,60 @@ def stats(
 def _print_author_table(author_stats: list[dict]) -> None:
     """Print a table of author statistics."""
     table = Table(title="👥 Commits by Author", show_header=True, header_style="bold cyan")
-    
+
     table.add_column("Author", style="white", no_wrap=True)
     table.add_column("Commits", justify="right", style="green")
     table.add_column("Percentage", justify="right", style="yellow")
     table.add_column("", justify="left", style="blue")  # Progress bar
-    
+
     for stat in author_stats:
         bar_width = int(stat["percentage"] / 2)  # Max 50 chars for 100%
         bar = "█" * bar_width
-        
+
         table.add_row(
             stat["author"],
             str(stat["commits"]),
             f"{stat['percentage']:.1f}%",
             bar,
         )
-    
+
     console.print(table)
     console.print()
 
 
 def _print_activity_heatmap(commits: list[dict]) -> None:
     """Print activity heatmap by day and hour."""
-    from gitstats.parser import get_weekly_activity, get_hourly_activity
-    
+    from gitstats.parser import get_hourly_activity, get_weekly_activity
+
     # Weekly activity
     weekly = get_weekly_activity(commits)
-    
+
     console.print("[bold]📅 Activity by Day of Week[/]\n")
-    
+
     max_commits = max(d["commits"] for d in weekly) if weekly else 1
-    
+
     for day_stat in weekly:
         bar_width = int((day_stat["commits"] / max_commits) * 30) if max_commits else 0
         bar = "█" * bar_width
-        
+
         console.print(
             f"  [cyan]{day_stat['day']}[/] │ [green]{bar:<30}[/] {day_stat['commits']:>3} commits"
         )
-    
+
     console.print()
-    
+
     # Hourly activity (simplified - peak hours)
     hourly = get_hourly_activity(commits)
     peak_hours = sorted(hourly, key=lambda x: x["commits"], reverse=True)[:3]
-    
+
     if peak_hours and peak_hours[0]["commits"] > 0:
         console.print("[bold]⏰ Peak Coding Hours[/]\n")
         for h in peak_hours:
             if h["commits"] > 0:
                 hour_str = f"{h['hour']:02d}:00"
-                console.print(f"  [yellow]{hour_str}[/] - {h['commits']} commits ({h['percentage']:.1f}%)")
+                console.print(
+                    f"  [yellow]{hour_str}[/] - {h['commits']} commits ({h['percentage']:.1f}%)"
+                )
         console.print()
 
 
