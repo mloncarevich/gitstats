@@ -39,30 +39,57 @@ def main(
 @app.command()
 def stats(
     path: str = typer.Argument(".", help="Path to git repository"),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        "-j",
+        help="Output statistics as JSON",
+    ),
 ) -> None:
     """Show commit statistics for a git repository."""
-    from gitstats.parser import get_commit_stats
+    import json
 
-    console.print(f"\n[bold]📊 Git Statistics for:[/] [cyan]{path}[/]\n")
+    from gitstats.parser import get_commit_stats, get_hourly_activity, get_weekly_activity
 
-    stats = get_commit_stats(path)
+    stats_data = get_commit_stats(path)
 
-    if not stats:
-        console.print("[red]No commits found or not a git repository.[/]")
+    if not stats_data:
+        if json_output:
+            console.print(json.dumps({"error": "No commits found or not a git repository"}))
+        else:
+            console.print("[red]No commits found or not a git repository.[/]")
         raise typer.Exit(1)
 
-    console.print(f"[bold]Total commits:[/] [green]{stats['total_commits']}[/]")
-    console.print(f"[bold]Contributors:[/] [green]{stats['total_authors']}[/]")
-    console.print(f"[bold]First commit:[/] [yellow]{stats['first_commit']}[/]")
-    console.print(f"[bold]Latest commit:[/] [yellow]{stats['last_commit']}[/]")
+    if json_output:
+        # Build JSON output
+        output = {
+            "repository": path,
+            "total_commits": stats_data["total_commits"],
+            "total_authors": stats_data["total_authors"],
+            "first_commit": stats_data["first_commit"],
+            "last_commit": stats_data["last_commit"],
+            "authors": stats_data["author_stats"],
+            "weekly_activity": get_weekly_activity(stats_data["commits"]),
+            "hourly_activity": get_hourly_activity(stats_data["commits"]),
+        }
+        console.print(json.dumps(output, indent=2))
+        return
+
+    # Pretty terminal output
+    console.print(f"\n[bold]📊 Git Statistics for:[/] [cyan]{path}[/]\n")
+
+    console.print(f"[bold]Total commits:[/] [green]{stats_data['total_commits']}[/]")
+    console.print(f"[bold]Contributors:[/] [green]{stats_data['total_authors']}[/]")
+    console.print(f"[bold]First commit:[/] [yellow]{stats_data['first_commit']}[/]")
+    console.print(f"[bold]Latest commit:[/] [yellow]{stats_data['last_commit']}[/]")
     console.print()
 
     # Show author breakdown table
-    if stats.get("author_stats"):
-        _print_author_table(stats["author_stats"])
+    if stats_data.get("author_stats"):
+        _print_author_table(stats_data["author_stats"])
 
     # Show activity heatmap
-    _print_activity_heatmap(stats["commits"])
+    _print_activity_heatmap(stats_data["commits"])
 
 
 def _print_author_table(author_stats: list[dict]) -> None:

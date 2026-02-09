@@ -13,6 +13,7 @@
 - ⏰ Peak coding hours analysis
 - 👥 Contributor insights
 - 🎨 Beautiful terminal output
+- 📤 JSON output for scripting
 
 ## 🚀 Installation
 
@@ -36,6 +37,9 @@ gitstats stats
 
 # Show stats for a specific repo
 gitstats stats /path/to/repo
+
+# Output as JSON (for scripting)
+gitstats stats --json
 ```
 
 ## 🛠️ Development
