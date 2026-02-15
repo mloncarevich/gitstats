@@ -49,7 +49,12 @@ def stats(
     """Show commit statistics for a git repository."""
     import json
 
-    from gitstats.parser import get_commit_stats, get_hourly_activity, get_weekly_activity
+    from gitstats.parser import (
+        get_commit_stats,
+        get_commit_streaks,
+        get_hourly_activity,
+        get_weekly_activity,
+    )
 
     stats_data = get_commit_stats(path)
 
@@ -60,6 +65,8 @@ def stats(
             console.print("[red]No commits found or not a git repository.[/]")
         raise typer.Exit(1)
 
+    streaks = get_commit_streaks(stats_data["commits"])
+
     if json_output:
         # Build JSON output
         output = {
@@ -69,6 +76,7 @@ def stats(
             "first_commit": stats_data["first_commit"],
             "last_commit": stats_data["last_commit"],
             "authors": stats_data["author_stats"],
+            "streaks": streaks,
             "weekly_activity": get_weekly_activity(stats_data["commits"]),
             "hourly_activity": get_hourly_activity(stats_data["commits"]),
         }
@@ -90,6 +98,9 @@ def stats(
 
     # Show activity heatmap
     _print_activity_heatmap(stats_data["commits"])
+
+    # Show streaks
+    _print_streaks(streaks)
 
 
 def _print_author_table(author_stats: list[dict]) -> None:
@@ -150,6 +161,26 @@ def _print_activity_heatmap(commits: list[dict]) -> None:
                     f"  [yellow]{hour_str}[/] - {h['commits']} commits ({h['percentage']:.1f}%)"
                 )
         console.print()
+
+
+def _print_streaks(streaks: dict) -> None:
+    """Print commit streak statistics."""
+    console.print("[bold]🔥 Commit Streaks[/]\n")
+
+    current = streaks["current_streak"]
+    longest = streaks["longest_streak"]
+    active_days = streaks["total_active_days"]
+
+    # Current streak with fire emojis based on length
+    if current > 0:
+        fires = "🔥" * min(current, 5)
+        console.print(f"  [green]Current streak:[/] {current} days {fires}")
+    else:
+        console.print("  [dim]Current streak:[/] 0 days (no recent commits)")
+
+    console.print(f"  [yellow]Longest streak:[/] {longest} days")
+    console.print(f"  [cyan]Total active days:[/] {active_days}")
+    console.print()
 
 
 if __name__ == "__main__":

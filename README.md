@@ -11,6 +11,7 @@
 - 📈 Commit statistics at a glance
 - 🗓️ Activity heatmap by day of week
 - ⏰ Peak coding hours analysis
+- 🔥 Commit streaks tracking
 - 👥 Contributor insights
 - 🎨 Beautiful terminal output
 - 📤 JSON output for scripting

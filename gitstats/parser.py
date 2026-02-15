@@ -186,3 +186,59 @@ def get_hourly_activity(commits: list[dict]) -> list[dict]:
         }
         for h in range(24)
     ]
+
+
+def get_commit_streaks(commits: list[dict]) -> dict:
+    """
+    Calculate commit streaks (consecutive days with commits).
+
+    Args:
+        commits: List of commit dictionaries
+
+    Returns:
+        Dictionary with streak statistics
+    """
+    from datetime import timedelta
+
+    if not commits:
+        return {"current_streak": 0, "longest_streak": 0, "total_active_days": 0}
+
+    # Get unique dates (just the date part, no time)
+    commit_dates = sorted({commit["date"].date() for commit in commits})
+
+    if not commit_dates:
+        return {"current_streak": 0, "longest_streak": 0, "total_active_days": 0}
+
+    # Calculate streaks
+    streaks = []
+    current_streak = 1
+
+    for i in range(1, len(commit_dates)):
+        if commit_dates[i] - commit_dates[i - 1] == timedelta(days=1):
+            current_streak += 1
+        else:
+            streaks.append(current_streak)
+            current_streak = 1
+
+    streaks.append(current_streak)
+
+    longest_streak = max(streaks) if streaks else 0
+
+    # Check if current streak is active (last commit was today or yesterday)
+    from datetime import date
+
+    today = date.today()
+    last_commit_date = commit_dates[-1]
+    days_since_last = (today - last_commit_date).days
+
+    if days_since_last <= 1:
+        active_streak = streaks[-1] if streaks else 0
+    else:
+        active_streak = 0
+
+    return {
+        "current_streak": active_streak,
+        "longest_streak": longest_streak,
+        "total_active_days": len(commit_dates),
+        "last_commit_date": str(last_commit_date),
+    }
