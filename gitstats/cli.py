@@ -45,9 +45,22 @@ def stats(
         "-j",
         help="Output statistics as JSON",
     ),
+    since: str = typer.Option(
+        None,
+        "--since",
+        "-s",
+        help="Show commits after this date (YYYY-MM-DD)",
+    ),
+    until: str = typer.Option(
+        None,
+        "--until",
+        "-u",
+        help="Show commits before this date (YYYY-MM-DD)",
+    ),
 ) -> None:
     """Show commit statistics for a git repository."""
     import json
+    from datetime import datetime
 
     from gitstats.parser import (
         get_commit_stats,
@@ -55,6 +68,24 @@ def stats(
         get_hourly_activity,
         get_weekly_activity,
     )
+
+    # Parse date filters
+    since_date = None
+    until_date = None
+
+    if since:
+        try:
+            since_date = datetime.strptime(since, "%Y-%m-%d")
+        except ValueError:
+            console.print(f"[red]Invalid date format for --since: {since}. Use YYYY-MM-DD[/]")
+            raise typer.Exit(1)
+
+    if until:
+        try:
+            until_date = datetime.strptime(until, "%Y-%m-%d")
+        except ValueError:
+            console.print(f"[red]Invalid date format for --until: {until}. Use YYYY-MM-DD[/]")
+            raise typer.Exit(1)
 
     stats_data = get_commit_stats(path)
 
@@ -64,6 +95,28 @@ def stats(
         else:
             console.print("[red]No commits found or not a git repository.[/]")
         raise typer.Exit(1)
+
+    # Filter commits by date range
+    commits = stats_data["commits"]
+    if since_date or until_date:
+        commits = _filter_commits_by_date(commits, since_date, until_date)
+        if not commits:
+            if json_output:
+                console.print(json.dumps({"error": "No commits found in the specified date range"}))
+            else:
+                console.print("[red]No commits found in the specified date range.[/]")
+            raise typer.Exit(1)
+        # Recalculate author stats for filtered commits
+        from gitstats.parser import get_author_stats
+
+        stats_data = {
+            **stats_data,
+            "commits": commits,
+            "total_commits": len(commits),
+            "first_commit": commits[0]["date"].strftime("%Y-%m-%d"),
+            "last_commit": commits[-1]["date"].strftime("%Y-%m-%d"),
+            "author_stats": get_author_stats(commits),
+        }
 
     streaks = get_commit_streaks(stats_data["commits"])
 
@@ -75,6 +128,10 @@ def stats(
             "total_authors": stats_data["total_authors"],
             "first_commit": stats_data["first_commit"],
             "last_commit": stats_data["last_commit"],
+            "date_filter": {
+                "since": since_date.strftime("%Y-%m-%d") if since_date else None,
+                "until": until_date.strftime("%Y-%m-%d") if until_date else None,
+            },
             "authors": stats_data["author_stats"],
             "streaks": streaks,
             "weekly_activity": get_weekly_activity(stats_data["commits"]),
@@ -84,7 +141,18 @@ def stats(
         return
 
     # Pretty terminal output
-    console.print(f"\n[bold]📊 Git Statistics for:[/] [cyan]{path}[/]\n")
+    console.print(f"\n[bold]📊 Git Statistics for:[/] [cyan]{path}[/]")
+
+    # Show date range if filtered
+    if since_date or until_date:
+        range_str = ""
+        if since_date:
+            range_str += f"from {since_date.strftime('%Y-%m-%d')} "
+        if until_date:
+            range_str += f"to {until_date.strftime('%Y-%m-%d')}"
+        console.print(f"[dim]Filtered: {range_str.strip()}[/]")
+
+    console.print()
 
     console.print(f"[bold]Total commits:[/] [green]{stats_data['total_commits']}[/]")
     console.print(f"[bold]Contributors:[/] [green]{stats_data['total_authors']}[/]")
@@ -161,6 +229,27 @@ def _print_activity_heatmap(commits: list[dict]) -> None:
                     f"  [yellow]{hour_str}[/] - {h['commits']} commits ({h['percentage']:.1f}%)"
                 )
         console.print()
+
+
+def _filter_commits_by_date(
+    commits: list[dict],
+    since_date,
+    until_date,
+) -> list[dict]:
+    """Filter commits by date range."""
+    filtered = commits
+
+    if since_date:
+        filtered = [c for c in filtered if c["date"].replace(tzinfo=None) >= since_date]
+
+    if until_date:
+        # Include the entire "until" day
+        from datetime import timedelta
+
+        until_end = until_date + timedelta(days=1)
+        filtered = [c for c in filtered if c["date"].replace(tzinfo=None) < until_end]
+
+    return filtered
 
 
 def _print_streaks(streaks: dict) -> None:

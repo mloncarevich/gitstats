@@ -12,6 +12,7 @@
 - 🗓️ Activity heatmap by day of week
 - ⏰ Peak coding hours analysis
 - 🔥 Commit streaks tracking
+- 📅 Date range filtering
 - 👥 Contributor insights
 - 🎨 Beautiful terminal output
 - 📤 JSON output for scripting
@@ -41,6 +42,10 @@ gitstats stats /path/to/repo
 
 # Output as JSON (for scripting)
 gitstats stats --json
+
+# Filter by date range
+gitstats stats --since 2025-01-01
+gitstats stats --since 2025-01-01 --until 2025-12-31
 ```
 
 ## 🛠️ Development
