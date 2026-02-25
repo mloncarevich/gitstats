@@ -57,6 +57,12 @@ def stats(
         "-u",
         help="Show commits before this date (YYYY-MM-DD)",
     ),
+    author: str = typer.Option(
+        None,
+        "--author",
+        "-a",
+        help="Filter commits by author name (case-insensitive, partial match)",
+    ),
 ) -> None:
     """Show commit statistics for a git repository."""
     import json
@@ -96,23 +102,36 @@ def stats(
             console.print("[red]No commits found or not a git repository.[/]")
         raise typer.Exit(1)
 
-    # Filter commits by date range
+    # Filter commits by date range and/or author
     commits = stats_data["commits"]
+    filters_applied = []
+
     if since_date or until_date:
         commits = _filter_commits_by_date(commits, since_date, until_date)
-        if not commits:
-            if json_output:
-                console.print(json.dumps({"error": "No commits found in the specified date range"}))
-            else:
-                console.print("[red]No commits found in the specified date range.[/]")
-            raise typer.Exit(1)
-        # Recalculate author stats for filtered commits
+        filters_applied.append("date")
+
+    if author:
+        commits = _filter_commits_by_author(commits, author)
+        filters_applied.append("author")
+
+    if filters_applied and not commits:
+        error_msg = "No commits found matching the specified filters"
+        if json_output:
+            console.print(json.dumps({"error": error_msg}))
+        else:
+            console.print(f"[red]{error_msg}[/]")
+        raise typer.Exit(1)
+
+    # Recalculate stats if any filters were applied
+    if filters_applied:
         from gitstats.parser import get_author_stats
 
+        unique_authors = {c["author"] for c in commits}
         stats_data = {
             **stats_data,
             "commits": commits,
             "total_commits": len(commits),
+            "total_authors": len(unique_authors),
             "first_commit": commits[0]["date"].strftime("%Y-%m-%d"),
             "last_commit": commits[-1]["date"].strftime("%Y-%m-%d"),
             "author_stats": get_author_stats(commits),
@@ -128,9 +147,10 @@ def stats(
             "total_authors": stats_data["total_authors"],
             "first_commit": stats_data["first_commit"],
             "last_commit": stats_data["last_commit"],
-            "date_filter": {
+            "filters": {
                 "since": since_date.strftime("%Y-%m-%d") if since_date else None,
                 "until": until_date.strftime("%Y-%m-%d") if until_date else None,
+                "author": author,
             },
             "authors": stats_data["author_stats"],
             "streaks": streaks,
@@ -143,14 +163,16 @@ def stats(
     # Pretty terminal output
     console.print(f"\n[bold]📊 Git Statistics for:[/] [cyan]{path}[/]")
 
-    # Show date range if filtered
-    if since_date or until_date:
-        range_str = ""
+    # Show filters if applied
+    if filters_applied:
+        filter_parts = []
         if since_date:
-            range_str += f"from {since_date.strftime('%Y-%m-%d')} "
+            filter_parts.append(f"from {since_date.strftime('%Y-%m-%d')}")
         if until_date:
-            range_str += f"to {until_date.strftime('%Y-%m-%d')}"
-        console.print(f"[dim]Filtered: {range_str.strip()}[/]")
+            filter_parts.append(f"to {until_date.strftime('%Y-%m-%d')}")
+        if author:
+            filter_parts.append(f"author: {author}")
+        console.print(f"[dim]Filtered: {' '.join(filter_parts)}[/]")
 
     console.print()
 
@@ -229,6 +251,12 @@ def _print_activity_heatmap(commits: list[dict]) -> None:
                     f"  [yellow]{hour_str}[/] - {h['commits']} commits ({h['percentage']:.1f}%)"
                 )
         console.print()
+
+
+def _filter_commits_by_author(commits: list[dict], author: str) -> list[dict]:
+    """Filter commits by author name (case-insensitive partial match)."""
+    author_lower = author.lower()
+    return [c for c in commits if author_lower in c["author"].lower()]
 
 
 def _filter_commits_by_date(

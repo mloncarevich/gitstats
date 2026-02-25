@@ -13,6 +13,7 @@
 - ⏰ Peak coding hours analysis
 - 🔥 Commit streaks tracking
 - 📅 Date range filtering
+- 👤 Author filtering
 - 👥 Contributor insights
 - 🎨 Beautiful terminal output
 - 📤 JSON output for scripting
@@ -46,6 +47,12 @@ gitstats stats --json
 # Filter by date range
 gitstats stats --since 2025-01-01
 gitstats stats --since 2025-01-01 --until 2025-12-31
+
+# Filter by author
+gitstats stats --author "Milan"
+
+# Combine filters
+gitstats stats --author "Milan" --since 2025-01-01 --json
 ```
 
 ## 🛠️ Development
