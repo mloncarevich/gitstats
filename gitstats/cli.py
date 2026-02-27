@@ -63,6 +63,12 @@ def stats(
         "-a",
         help="Filter commits by author name (case-insensitive, partial match)",
     ),
+    top: int = typer.Option(
+        None,
+        "--top",
+        "-t",
+        help="Show only top N contributors",
+    ),
 ) -> None:
     """Show commit statistics for a git repository."""
     import json
@@ -151,8 +157,9 @@ def stats(
                 "since": since_date.strftime("%Y-%m-%d") if since_date else None,
                 "until": until_date.strftime("%Y-%m-%d") if until_date else None,
                 "author": author,
+                "top": top,
             },
-            "authors": stats_data["author_stats"],
+            "authors": stats_data["author_stats"][:top] if top else stats_data["author_stats"],
             "streaks": streaks,
             "weekly_activity": get_weekly_activity(stats_data["commits"]),
             "hourly_activity": get_hourly_activity(stats_data["commits"]),
@@ -184,7 +191,10 @@ def stats(
 
     # Show author breakdown table
     if stats_data.get("author_stats"):
-        _print_author_table(stats_data["author_stats"])
+        author_stats_display = stats_data["author_stats"]
+        if top and top > 0:
+            author_stats_display = author_stats_display[:top]
+        _print_author_table(author_stats_display, top=top, total=len(stats_data["author_stats"]))
 
     # Show activity heatmap
     _print_activity_heatmap(stats_data["commits"])
@@ -193,9 +203,14 @@ def stats(
     _print_streaks(streaks)
 
 
-def _print_author_table(author_stats: list[dict]) -> None:
+def _print_author_table(
+    author_stats: list[dict], top: int | None = None, total: int | None = None
+) -> None:
     """Print a table of author statistics."""
-    table = Table(title="👥 Commits by Author", show_header=True, header_style="bold cyan")
+    title = "👥 Commits by Author"
+    if top and total and top < total:
+        title += f" (top {top} of {total})"
+    table = Table(title=title, show_header=True, header_style="bold cyan")
 
     table.add_column("Author", style="white", no_wrap=True)
     table.add_column("Commits", justify="right", style="green")
