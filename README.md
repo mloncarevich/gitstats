@@ -51,6 +51,9 @@ gitstats stats --since 2025-01-01 --until 2025-12-31
 # Filter by author
 gitstats stats --author "Milan"
 
+# Show only top N contributors
+gitstats stats --top 5
+
 # Combine filters
 gitstats stats --author "Milan" --since 2025-01-01 --json
 ```
