@@ -54,7 +54,7 @@ def get_commit_stats(repo_path: str = ".") -> dict | None:
                     "hash": commit_hash,
                     "author": author_name,
                     "email": author_email,
-                    "date": datetime.fromisoformat(date_str),
+                    "date": datetime.fromisoformat(date_str.replace("Z", "+00:00")),
                 }
             )
 
